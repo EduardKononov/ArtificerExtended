@@ -10,6 +10,9 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.Networking;
+using R2API.Networking.Interfaces;
+using R2API.Networking;
+using static R2API.Networking.NetworkingHelpers;
 
 namespace ArtificerExtended.States
 {
@@ -17,16 +20,64 @@ namespace ArtificerExtended.States
     {
         public static GameObject muzzleflashEffect => Addressables.LoadAssetAsync<GameObject>(RoR2BepInExPack.GameAssetPaths.RoR2_Base_Mage.MuzzleflashMageIceLarge_prefab).WaitForCompletion();//FlyUpState.muzzleflashEffect;
 
-        internal bool continuing = false;
+        internal SkillSlot _activatorSkillSlot;
+        internal bool authorityProceedToNextState = false;
         internal bool addedFallImmunity = false;
         internal bool crit = false;
+        internal bool _vortexEnding = false;
+        internal bool vortexEnding
+        {
+            get => characterBody.HasBuff(_1FrostbiteSkill.vortexEndingBuff);
+            set
+            {
+                if (_vortexEnding == true)
+                    return;
+
+                if (!_vortexEnding)
+                    characterBody.AddTimedBuffAuthority(_1FrostbiteSkill.vortexEndingBuff.buffIndex, 20);
+                _vortexEnding = value;
+            }
+        }
         public GenericSkill activatorSkillSlot { get; set; }
 
         protected virtual void SetNextState()
         {
-            continuing = false;
+            authorityProceedToNextState = false;
             outer.SetNextStateToMain();
         }
+        public override void OnSerialize(NetworkWriter writer)
+        {
+            base.OnSerialize(writer);
+            writer.Write(addedFallImmunity);
+            writer.Write(crit);
+            writer.Write((int)_activatorSkillSlot);
+        }
+        public override void OnDeserialize(NetworkReader reader)
+        {
+            base.OnDeserialize(reader);
+            addedFallImmunity = reader.ReadBoolean();
+            crit = reader.ReadBoolean();
+            _activatorSkillSlot = (SkillSlot)reader.ReadInt32();
+            if (activatorSkillSlot == null)
+            {
+                switch (_activatorSkillSlot)
+                {
+                    case SkillSlot.Primary:
+                        activatorSkillSlot = skillLocator.primary;
+                        break;
+                    case SkillSlot.Secondary:
+                        activatorSkillSlot = skillLocator.secondary;
+                        break;
+                    case SkillSlot.Utility:
+                        activatorSkillSlot = skillLocator.utility;
+                        break;
+                    case SkillSlot.Special:
+                        activatorSkillSlot = skillLocator.special;
+                        break;
+                }
+            }
+        }
+
         public override void OnEnter()
         {
             base.OnEnter();
@@ -53,21 +104,14 @@ namespace ArtificerExtended.States
         public override void OnExit()
         {
             base.OnExit();
-            if (!continuing)
+            if (!authorityProceedToNextState && base.isAuthority)
             {
-                if (NetworkServer.active)
-                {
-                    //clear buffs
-                    while (characterBody.HasBuff(_1FrostbiteSkill.artiIceShield))
-                        characterBody.RemoveBuff(_1FrostbiteSkill.artiIceShield);
-                }
-
-                //clear spiral projectiles
-
-                if (addedFallImmunity)
-                {
-                    base.characterBody.bodyFlags &= ~CharacterBody.BodyFlags.IgnoreFallDamage;
-                }
+                new SyncVortexClear(this.characterBody.gameObject, this.addedFallImmunity)
+                    .Send(R2API.Networking.NetworkDestination.Server);
+            }
+            if (NetworkServer.active)
+            {
+                characterBody.ClearTimedBuffs(_1FrostbiteSkill.vortexEndingBuff);
             }
         }
 
@@ -75,12 +119,6 @@ namespace ArtificerExtended.States
         {
             if (base.isAuthority)
             {
-                /*EntityStateMachine entityStateMachine = EntityStateMachine.FindByCustomName(base.gameObject, "Weapon");
-                if (entityStateMachine != null)
-                {
-                    entityStateMachine.SetNextStateToMain();
-                }*/
-
                 EntityStateMachine entityStateMachine2 = EntityStateMachine.FindByCustomName(base.gameObject, "Jet");
                 if (entityStateMachine2 == null || entityStateMachine2.state.GetType() != typeof(JetpackOn))
                 {
@@ -90,15 +128,29 @@ namespace ArtificerExtended.States
             }
         }
 
-        public void InflictSnow()
+        /// <summary>
+        /// transmits muzzle flash effect and sends vortex blast message to server
+        /// </summary>
+        public void InflictSnowAuthority()
         {
-            EffectManager.SimpleMuzzleFlash(muzzleflashEffect, base.gameObject, "MuzzleLeft", false);
-            EffectManager.SimpleMuzzleFlash(muzzleflashEffect, base.gameObject, "MuzzleRight", false);
+            if (!this.isAuthority)
+            {
+                return;
+            }
+            EffectManager.SimpleMuzzleFlash(muzzleflashEffect, base.gameObject, "MuzzleLeft", true);
+            EffectManager.SimpleMuzzleFlash(muzzleflashEffect, base.gameObject, "MuzzleRight", true);
+            new SyncVortexBlast(characterBody.corePosition, gameObject, characterBody.damage * _1FrostbiteSkill.blizzardDamageCoefficient, this.crit)
+                .Send(R2API.Networking.NetworkDestination.Server);
+            return;
+
+            #region x3
+            if (!NetworkServer.active)
+                return;
 
             float damage = characterBody.damage * _1FrostbiteSkill.blizzardDamageCoefficient;
             RainrotSharedUtils.Frost.FrostUtilsModule.CreateIceBlast(characterBody,
                 FlyUpState.blastAttackForce, damage, _1FrostbiteSkill.blizzardProcCoefficient,
-                _1FrostbiteSkill.blizzardRadius, this.crit, base.transform.position, true, DamageSource.Special);
+                _1FrostbiteSkill.blizzardRadius, this.crit, characterBody.corePosition, true, DamageSource.Special);
 
             return;
             EffectManager.SpawnEffect(_1FrostbiteSkill.novaEffectPrefab, new EffectData
@@ -120,6 +172,7 @@ namespace ArtificerExtended.States
             blastAttack.attackerFiltering = AttackerFiltering.NeverHitSelf;
 
             blastAttack.Fire();
+            #endregion
         }
 
         public override InterruptPriority GetMinimumInterruptPriority()

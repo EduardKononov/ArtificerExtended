@@ -19,6 +19,7 @@ using UnityEngine.AddressableAssets;
 using static R2API.DamageAPI;
 using RoR2.Achievements;
 using static ArtificerExtended.Modules.Language.Styling;
+using R2API.Networking;
 
 namespace ArtificerExtended.Skills
 {
@@ -26,7 +27,9 @@ namespace ArtificerExtended.Skills
     {
         public static GameObject novaEffectPrefab = RoR2.LegacyResourcesAPI.Load<GameObject>("prefabs/effects/impacteffects/AffixWhiteExplosion");
 
+        [AutoConfig("Frost Nova Damage Coefficient", 5f)]
         public static float blizzardDamageCoefficient = 5f;
+        [AutoConfig("Frost Nova Proc Coefficient", 5f)]
         public static float blizzardProcCoefficient = 1f;
         public static float blizzardRadius = ArtificerExtendedPlugin.meleeRangeChannel;
 
@@ -45,6 +48,7 @@ namespace ArtificerExtended.Skills
         public static GameObject icicleProjectilePrefab;
         public static GameObject blizzardArmorVFX;
         public static BuffDef artiIceShield;
+        public static BuffDef vortexEndingBuff;
 
         public static float buffInterval = 1.2f;
         public static int maxBuffStacks = 10;
@@ -118,6 +122,8 @@ namespace ArtificerExtended.Skills
             //  ).Value;
 
             Content.AddEntityState(typeof(PolarVortex));
+            NetworkingAPI.RegisterMessageType<SyncVortexBlast>();
+            NetworkingAPI.RegisterMessageType<SyncVortexClear>();
             KeywordTokens = new string[3] { "KEYWORD_AGILE", "KEYWORD_FROST", frostArmorKeywordToken };
             RegisterBuffWhiteout();
             RegisterArmorEffects();
@@ -226,6 +232,11 @@ namespace ArtificerExtended.Skills
                 ArtificerExtendedPlugin.iconBundle.LoadAsset<Sprite>(ArtificerExtendedPlugin.iconsPath + "texBuffFrostbiteShield.png"),
                 Color.cyan,
                 true, false);
+            vortexEndingBuff = Content.CreateAndAddBuff("bdVortexEnding",
+                null,
+                Color.black,
+                true, false);
+            vortexEndingBuff.isHidden = true;
         }
 
         public void CastNova(CharacterBody self)

@@ -25,6 +25,7 @@ using ArtificerExtended.Modules;
 using BepInEx.Configuration;
 using MonoMod.Cil;
 using Mono.Cecil.Cil;
+using R2API.Networking;
 
 #pragma warning disable CS0618 // Type or member is obsolete
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
@@ -52,7 +53,7 @@ namespace ArtificerExtended
     [BepInDependency("com.DrBibop.VRAPI", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency(JetHack.JetHackPlugin.guid, BepInDependency.DependencyFlags.SoftDependency)]
     [R2APISubmoduleDependency(nameof(LanguageAPI), nameof(LoadoutAPI),  nameof(PrefabAPI), nameof(UnlockableAPI),
-        nameof(SkillsAPI), nameof(DamageAPI), nameof(RecalculateStatsAPI), nameof(DeployableAPI), nameof(Skins))]
+        nameof(SkillsAPI), nameof(DamageAPI), nameof(RecalculateStatsAPI), nameof(DeployableAPI), nameof(Skins), nameof(NetworkingAPI))]
     [BepInPlugin(guid, modName, version)]
     public partial class ArtificerExtendedPlugin : BaseUnityPlugin
     {

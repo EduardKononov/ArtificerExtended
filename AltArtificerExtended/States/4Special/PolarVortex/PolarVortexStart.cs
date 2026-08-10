@@ -17,6 +17,17 @@ namespace ArtificerExtended.States
         float duration;
         public bool exiting = false;
 
+        public override void OnSerialize(NetworkWriter writer)
+        {
+            base.OnSerialize(writer);
+            writer.Write(this.exiting);
+        }
+        public override void OnDeserialize(NetworkReader reader)
+        {
+            base.OnDeserialize(reader);
+            this.exiting = reader.ReadBoolean();
+        }
+
         public override void OnEnter()
         {
             base.OnEnter();
@@ -32,14 +43,20 @@ namespace ArtificerExtended.States
             }
             // play animation
             if (!exiting)
+            {
                 base.PlayAnimation("Gesture, Additive", "PrepWall", "PrepWall.playbackRate", this.duration);
+
+                if (!outer.gameObject.TryGetComponent(out SeekerController _))
+                {
+                    outer.gameObject.AddComponent<SeekerController>();
+                }
+            }
         }
         public override void OnExit()
         {
             base.OnExit();
             // cast nova
-            if(NetworkServer.active)
-                InflictSnow();
+            InflictSnowAuthority();
         }
         public override void FixedUpdate()
         {
@@ -64,7 +81,7 @@ namespace ArtificerExtended.States
                 return;
             }
 
-            continuing = true;
+            authorityProceedToNextState = true;
             outer.SetNextState(new PolarVortex
             {
                 addedFallImmunity = this.addedFallImmunity,

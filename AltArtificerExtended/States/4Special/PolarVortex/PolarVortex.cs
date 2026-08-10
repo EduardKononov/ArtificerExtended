@@ -19,7 +19,6 @@ namespace ArtificerExtended.States
     {
         SeekerController orbitProjectileManager;
 
-        bool ending = false;
         public static float endingSpeedMultiplier = 10f;
         bool keyReleased;
         float armorAddStopwatch;
@@ -32,7 +31,8 @@ namespace ArtificerExtended.States
         public override void OnEnter()
         {
             base.OnEnter();
-
+            if (activatorSkillSlot == null)
+                activatorSkillSlot = skillLocator.special;
             int stock = activatorSkillSlot.stock;
             if (activatorSkillSlot && CancelFrostbiteSkill.instance.SkillDef != null)
             {
@@ -40,8 +40,6 @@ namespace ArtificerExtended.States
                 activatorSkillSlot.stock = stock;
             }
 
-            // add ice armor
-            AddIceArmorBuff();
             buffInterval = baseBuffInterval;
             if (ArtificerExtendedPlugin.BodyHasAncientScepterItem(this.characterBody))
             {
@@ -53,41 +51,50 @@ namespace ArtificerExtended.States
             {
                 orbitProjectileManager = outer.gameObject.AddComponent<SeekerController>();
             }
-            //ProjectileManager.instance.FireProjectile(SoulSpiral.projectilePrefab, )
+            if (NetworkServer.active)
+            {
+                // add ice armor
+                AddIceArmorBuff();
+            }
         }
         public override void FixedUpdate()
         {
             base.FixedUpdate();
-            if (!hasFiredIcicles && NetworkServer.active)
+
+            if (!hasFiredIcicles && base.isAuthority)
             {
                 FireIcicles();
             }
-            if (isAuthority)
+
+            if (NetworkServer.active)
             {
-                armorAddStopwatch += (ending ? Time.fixedDeltaTime * endingSpeedMultiplier : Time.fixedDeltaTime); 
+                float multiplier = vortexEnding ? endingSpeedMultiplier : 1;
+                armorAddStopwatch += Time.fixedDeltaTime * multiplier;
 
                 while (armorAddStopwatch > buffInterval)
                 {
                     armorAddStopwatch -= buffInterval;
                     AddIceArmorBuff();
+                }
+            }
 
-                    int buffCount = characterBody.GetBuffCount(_1FrostbiteSkill.artiIceShield);
-                    if (buffCount >= _1FrostbiteSkill.maxBuffStacks)
-                    {
-                        if (!ending)
-                            base.PlayAnimation("Gesture, Additive", "PrepWall", "PrepWall.playbackRate", 0.3f / this.attackSpeedStat);
-                        this.SetNextState();
-                        return;
-                    }
+            if (isAuthority)
+            {
+                int buffCount = characterBody.GetBuffCount(_1FrostbiteSkill.artiIceShield);
+                if (buffCount >= _1FrostbiteSkill.maxBuffStacks)
+                {
+                    if (!vortexEnding)
+                        base.PlayAnimation("Gesture, Additive", "PrepWall", "PrepWall.playbackRate", 0.3f / this.attackSpeedStat);
+                    this.SetNextState();
                 }
 
-                if (!ending)
+                if (!vortexEnding)
                 {
                     bool flag = this.IsKeyDownAuthority(base.skillLocator, base.inputBank);
                     this.keyReleased |= !flag;
                     if (this.keyReleased && flag)
                     {
-                        ending = true;
+                        vortexEnding = true;
                         base.PlayAnimation("Gesture, Additive", "PrepWall", "PrepWall.playbackRate", 0.3f / this.attackSpeedStat);
                     }
                 }
@@ -129,17 +136,18 @@ namespace ArtificerExtended.States
             {
                 Destroy(orbitProjectileManager);
             }
-            if (!continuing)
-                InflictSnow();
+            if (!authorityProceedToNextState)
+                InflictSnowAuthority();
         }
         protected override void SetNextState()
         {
-            continuing = true;
+            authorityProceedToNextState = true;
             outer.SetNextState(new PolarVortexStart
             {
                 addedFallImmunity = this.addedFallImmunity,
                 exiting = true,
                 activatorSkillSlot = this.activatorSkillSlot,
+                _activatorSkillSlot = (SkillSlot)this.skillLocator.GetSkillSlotIndex(activatorSkillSlot),
                 crit = this.crit
             });
         }
