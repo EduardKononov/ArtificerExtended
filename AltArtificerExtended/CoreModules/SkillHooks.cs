@@ -112,7 +112,7 @@ namespace ArtificerExtended
 
         private void FixFrostStacks2(On.RoR2.CharacterBody.orig_AddTimedBuff_BuffDef_float orig, CharacterBody self, BuffDef buffDef, float duration)
         {
-            if (self.healthComponent.isInFrozenState && buffDef == DLC2Content.Buffs.Frost)
+            if (self.healthComponent && self.healthComponent.isInFrozenState && buffDef == DLC2Content.Buffs.Frost)
             {
                 return;
             }
@@ -121,7 +121,7 @@ namespace ArtificerExtended
 
         private void FixFrostStacks(On.RoR2.CharacterBody.orig_AddTimedBuff_BuffIndex_float orig, CharacterBody self, BuffIndex buffDef, float duration)
         {
-            if (self.healthComponent.isInFrozenState && buffDef == DLC2Content.Buffs.Frost.buffIndex)
+            if (self.healthComponent && self.healthComponent.isInFrozenState && buffDef == DLC2Content.Buffs.Frost.buffIndex)
             {
                 return;
             }

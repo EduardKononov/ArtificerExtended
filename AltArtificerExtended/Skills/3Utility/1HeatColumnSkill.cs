@@ -116,7 +116,7 @@ namespace ArtificerExtended.Skills
 
             GameObject itSafeWard = Addressables.LoadAssetAsync<GameObject>("RoR2/DLC1/GameModes/InfiniteTowerRun/ITAssets/InfiniteTowerSafeWardAwaitingInteraction.prefab").WaitForCompletion();
             GameObject verticalWard = itSafeWard.transform.Find("Indicator")?.gameObject;
-            GameObject encourageWardIndicator = PrefabAPI.InstantiateClone(verticalWard, "EncourageWardIndicatorPrefab");
+            GameObject encourageWardIndicator = PrefabAPI.InstantiateClone(verticalWard, "HeatWardIndicatorPrefab");
 
             Material encourageWardMaterial = UnityEngine.Object.Instantiate(Addressables.LoadAssetAsync<Material>("RoR2/Base/WardOnLevel/matWarbannerSphereIndicator2.mat").WaitForCompletion());
             encourageWardMaterial.SetColor("_TintColor", new Color32(146, 73, 0, 201)/*(150, 110, 0, 191)*/);

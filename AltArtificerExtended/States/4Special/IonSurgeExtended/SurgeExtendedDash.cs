@@ -231,7 +231,7 @@ namespace ArtificerExtended.States
             {
                 if (base.fixedAge >= antiGravityDuration + windupDuration)
                 {
-                    if (windupDuration > 0 && characterBody.HasBuff(RoR2Content.Buffs.ArmorBoost))
+                    if (windupDuration > 0 && characterBody.HasBuff(RoR2Content.Buffs.ArmorBoost) && NetworkServer.active)
                         base.characterBody.RemoveBuff(RoR2Content.Buffs.ArmorBoost);
                     SetAntiGravity(false);
                 }
@@ -362,7 +362,7 @@ namespace ArtificerExtended.States
             {
                 base.characterBody.RemoveBuff(JunkContent.Buffs.IgnoreFallDamage.buffIndex);
             }
-            if (characterBody.HasBuff(RoR2Content.Buffs.ArmorBoost))
+            if (characterBody.HasBuff(RoR2Content.Buffs.ArmorBoost) && NetworkServer.active)
                 base.characterBody.RemoveBuff(RoR2Content.Buffs.ArmorBoost);
             if (base.isAuthority)
             {
@@ -524,7 +524,7 @@ namespace ArtificerExtended.States
 
         public void EndFlight()
         {
-            if(characterBody.HasBuff(ArtificerExtendedPlugin.ionSurgePower))
+            if(characterBody.HasBuff(ArtificerExtendedPlugin.ionSurgePower) && NetworkServer.active)
                 characterBody.RemoveBuff(ArtificerExtendedPlugin.ionSurgePower);
             if (model)
                 model.forceUpdate = true;
